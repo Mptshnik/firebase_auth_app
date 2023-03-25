@@ -8,6 +8,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final user = FirebaseAuth.instance.currentUser!;
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +16,19 @@ class _HomePageState extends State<HomePage> {
       body: Center(
           child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: [Text("Добро пожаловать")],
+        children: [
+          Text("Добро пожаловать ${user.email!}"),
+          ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamed(context, 'profile');
+              },
+              child: Text("Профиль")),
+          ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamed(context, 'notes');
+              },
+              child: Text("Мои заметки"))
+        ],
       )),
     );
   }

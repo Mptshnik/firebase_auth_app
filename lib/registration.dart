@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -11,6 +12,10 @@ class _RegisterPageState extends State<RegisterPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
   TextEditingController _loginController = TextEditingController();
   TextEditingController _passwordController = TextEditingController();
+  TextEditingController _lastNameController = TextEditingController();
+  TextEditingController _firstNameController = TextEditingController();
+  TextEditingController _middleNameController = TextEditingController();
+
   late FirebaseAuth _auth;
   bool isObscure = true;
   bool _isValid = true;
@@ -33,6 +38,8 @@ class _RegisterPageState extends State<RegisterPage> {
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 24),
               ),
+
+              //login
               Padding(
                 padding: EdgeInsets.only(left: 100, right: 100, top: 15),
                 child: TextFormField(
@@ -50,13 +57,15 @@ class _RegisterPageState extends State<RegisterPage> {
 
                     return null;
                   },
-                  maxLength: 16,
+                  maxLength: 255,
                   decoration: const InputDecoration(
                     labelText: 'Логин',
                     border: OutlineInputBorder(),
                   ),
                 ),
               ),
+
+              //password
               Padding(
                 padding: EdgeInsets.only(left: 100, right: 100, top: 15),
                 child: TextFormField(
@@ -73,9 +82,82 @@ class _RegisterPageState extends State<RegisterPage> {
                     }
                     return null;
                   },
-                  maxLength: 10,
+                  maxLength: 255,
                   decoration: const InputDecoration(
                     labelText: 'Пароль',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              //last name
+              Padding(
+                padding: EdgeInsets.only(left: 100, right: 100, top: 15),
+                child: TextFormField(
+                  controller: _lastNameController,
+                  validator: (value) {
+                    if (!_isValid) {
+                      return null;
+                    }
+                    if (value!.isEmpty) {
+                      return 'Поле пустое';
+                    }
+                    if (value.length < 1) {
+                      return 'Фамилия должна содержать не менее 1 символа';
+                    }
+                    return null;
+                  },
+                  maxLength: 255,
+                  decoration: const InputDecoration(
+                    labelText: 'Фамилия',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              
+              //first name
+              Padding(
+                padding: EdgeInsets.only(left: 100, right: 100, top: 15),
+                child: TextFormField(
+                  controller: _firstNameController,
+                  validator: (value) {
+                    if (!_isValid) {
+                      return null;
+                    }
+                    if (value!.isEmpty) {
+                      return 'Поле пустое';
+                    }
+                    if (value.length < 1) {
+                      return 'Имя должно содержать не менее 1 символа';
+                    }
+                    return null;
+                  },
+                  maxLength: 255,
+                  decoration: const InputDecoration(
+                    labelText: 'Имя',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+               //middle name
+              Padding(
+                padding: EdgeInsets.only(left: 100, right: 100, top: 15),
+                child: TextFormField(
+                  controller: _middleNameController,
+                  validator: (value) {
+                    if (!_isValid) {
+                      return null;
+                    }
+                    if (value!.isEmpty) {
+                      return 'Поле пустое';
+                    }
+                    if (value.length < 1) {
+                      return 'Отчество должно содержать не менее 1 символа';
+                    }
+                    return null;
+                  },
+                  maxLength: 255,
+                  decoration: const InputDecoration(
+                    labelText: 'Отчество',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -111,10 +193,23 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  Future addUserDetails(String id) async
+  {
+    await FirebaseFirestore.instance.collection('users').doc(id).set({
+      'first_name': _lastNameController.text.trim(),
+      'last_name': _lastNameController.text.trim(),
+      'middle_name': _middleNameController.text.trim(),
+      'email': _loginController.text.trim()
+    });
+  }
+
   register() async {
     try {
       UserCredential user = await _auth.createUserWithEmailAndPassword(
           email: _loginController.text, password: _passwordController.text);
+
+      addUserDetails(FirebaseAuth.instance.currentUser!.uid);
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Успешная регистрация"),
