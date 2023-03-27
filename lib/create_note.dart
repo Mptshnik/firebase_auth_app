@@ -1,8 +1,8 @@
-import 'dart:html';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 class CreateNotePage extends StatefulWidget {
@@ -18,6 +18,17 @@ class _CreateNotePageState extends State<CreateNotePage> {
   TextEditingController _descriptionController = TextEditingController();
   bool isObscure = true;
   bool _isValid = true;
+  late Map<String, dynamic> imageData = {};
+
+  Future<String> loadImage(DocumentSnapshot documentSnapshot) async {
+    Reference ref = FirebaseStorage.instance
+        .ref()
+        .child(documentSnapshot['preview_image']['storage_path']);
+
+    var url = await ref.getDownloadURL();
+    print(url);
+    return url;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +105,16 @@ class _CreateNotePageState extends State<CreateNotePage> {
             ),
           ),
           Padding(
-              padding: EdgeInsets.only(left: 350, right: 350, top: 50),
+              padding: EdgeInsets.only(left: 350, right: 350, top: 5),
+              child: Container(
+                width: 150,
+                child: ElevatedButton(
+                  child: Text("Загрузить фото"),
+                  onPressed: () => {_pickFile()},
+                ),
+              )),
+          Padding(
+              padding: EdgeInsets.only(left: 350, right: 350, top: 10),
               child: Container(
                 width: 180,
                 child: ElevatedButton(
@@ -106,7 +126,7 @@ class _CreateNotePageState extends State<CreateNotePage> {
                 ),
               )),
           Padding(
-              padding: EdgeInsets.only(left: 350, right: 350, top: 50),
+              padding: EdgeInsets.only(left: 350, right: 350, top: 5),
               child: ElevatedButton(
                 child: Text("Главная"),
                 onPressed: () => {
@@ -120,7 +140,7 @@ class _CreateNotePageState extends State<CreateNotePage> {
           ),
           Text(
             "Все заметки",
-            style: TextStyle(fontSize: 35),
+            style: TextStyle(fontSize: 20),
           ),
           SizedBox(
             height: 25,
@@ -149,6 +169,38 @@ class _CreateNotePageState extends State<CreateNotePage> {
                           snapshot.data!.docs[index];
                       return Column(
                         children: [
+                          FutureBuilder<String>(
+                            future: loadImage(documentSnapshot),
+                            builder: (BuildContext context,
+                                AsyncSnapshot<String> image) {
+                              if (image.hasData) {
+                                return Column(
+                                  children: [
+                                    Container(
+                                      width: 150,
+                                      child: Image.network(
+                                        image.data.toString(),
+                                        fit: BoxFit.scaleDown,
+                                      ),
+                                    ),
+                                    Text(
+                                        'Размер фото: ' +
+                                            documentSnapshot['preview_image']
+                                                    ['size']
+                                                .toString(),
+                                        style: TextStyle(fontSize: 15)),
+                                    Text(
+                                        'Название фото: ' +
+                                            documentSnapshot['preview_image']
+                                                ['name'],
+                                        style: TextStyle(fontSize: 15)),
+                                  ],
+                                );
+                              } else {
+                                return new Container(); // placeholder
+                              }
+                            },
+                          ),
                           Text('Заметка: ' + documentSnapshot['title'],
                               style: TextStyle(fontSize: 30)),
                           SizedBox(
@@ -163,6 +215,11 @@ class _CreateNotePageState extends State<CreateNotePage> {
                                   style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.white),
                                   onPressed: () {
+                                    FirebaseStorage.instance
+                                        .ref()
+                                        .child(documentSnapshot["preview_image"]
+                                            ['storage_path'])
+                                        .delete();
                                     FirebaseFirestore.instance
                                         .collection('users')
                                         .doc(user.uid)
@@ -207,15 +264,33 @@ class _CreateNotePageState extends State<CreateNotePage> {
     );
   }
 
+  void _pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+    if (result != null) {
+      PlatformFile file = result.files.first;
+      await FirebaseStorage.instance
+          .ref('uploads/${file.name}')
+          .putData(file.bytes!);
+
+      imageData = {
+        "size": file.size,
+        "file_extensions": file.extension!,
+        "name": file.name,
+        'storage_path': 'uploads/${file.name}'
+      };
+    } else {}
+  }
+
   Future addNote() async {
     await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
         .collection('notes')
         .add({
-          'title': _titleController.text.trim(),
-          'description': _descriptionController.text.trim()
-        });
-        
+      'title': _titleController.text.trim(),
+      'description': _descriptionController.text.trim(),
+      'preview_image': imageData
+    });
   }
 }

@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 class UserProfile extends StatefulWidget {
@@ -14,7 +16,7 @@ class _UserProfileState extends State<UserProfile> {
   TextEditingController _lastNameController = TextEditingController();
   TextEditingController _firstNameController = TextEditingController();
   TextEditingController _middleNameController = TextEditingController();
-
+  late Map<String, dynamic> imageData = {};
   bool isObscure = true;
   bool _isValid = true;
 
@@ -140,6 +142,16 @@ class _UserProfileState extends State<UserProfile> {
                             child: Container(
                               width: 50,
                               child: ElevatedButton(
+                                child: Text("Загрузить фото профиля"),
+                                onPressed: () => {_pickFile()},
+                              ),
+                            )),
+                        Padding(
+                            padding:
+                                EdgeInsets.only(left: 350, right: 350, top: 50),
+                            child: Container(
+                              width: 50,
+                              child: ElevatedButton(
                                 child: Text("Сохранить изменения"),
                                 onPressed: () => {
                                   _isValid = true,
@@ -176,6 +188,30 @@ class _UserProfileState extends State<UserProfile> {
     ));
   }
 
+  void _pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+    if (result != null) {
+      PlatformFile file = result.files.first;
+      await FirebaseStorage.instance
+          .ref('uploads/${file.name}')
+          .putData(file.bytes!);
+
+      imageData = {
+        "size": file.size,
+        "file_extensions": file.extension!,
+        "name": file.name,
+        'storage_path': 'uploads/${file.name}'
+      };
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Изображение успешно загружено"),
+        ),
+      );
+    } else {}
+  }
+
   Future saveChanges() async {
     String id = FirebaseAuth.instance.currentUser!.uid;
 
@@ -186,6 +222,7 @@ class _UserProfileState extends State<UserProfile> {
           'first_name': _firstNameController.text.trim(),
           'last_name': _lastNameController.text.trim(),
           'middle_name': _middleNameController.text.trim(),
+          'profile_image': imageData
         })
         .then((value) => {
               ScaffoldMessenger.of(context).showSnackBar(

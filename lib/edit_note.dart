@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 class EditNotePage extends StatefulWidget {
@@ -16,6 +18,7 @@ class _EditNotePageState extends State<EditNotePage> {
   TextEditingController _descriptionController = TextEditingController();
   bool isObscure = true;
   bool _isValid = true;
+  late Map<String, dynamic> imageData = {};
   String noteId = "";
 
   @override
@@ -28,6 +31,7 @@ class _EditNotePageState extends State<EditNotePage> {
 
       _titleController.text = note['title'];
       _descriptionController.text = note['description'];
+      imageData = note['preview_image'];
       noteId = note.id;
     }
 
@@ -94,6 +98,15 @@ class _EditNotePageState extends State<EditNotePage> {
             ),
           ),
           Padding(
+              padding: EdgeInsets.only(left: 350, right: 350, top: 5),
+              child: Container(
+                width: 150,
+                child: ElevatedButton(
+                  child: Text("Загрузить фото"),
+                  onPressed: () => {_pickFile()},
+                ),
+              )),
+          Padding(
               padding: EdgeInsets.only(left: 350, right: 350, top: 50),
               child: Container(
                 width: 180,
@@ -120,6 +133,24 @@ class _EditNotePageState extends State<EditNotePage> {
     );
   }
 
+  void _pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+    if (result != null) {
+      PlatformFile file = result.files.first;
+      await FirebaseStorage.instance
+          .ref('uploads/${file.name}')
+          .putData(file.bytes!);
+
+      imageData = {
+        "size": file.size,
+        "file_extensions": file.extension!,
+        "name": file.name,
+        'storage_path': 'uploads/${file.name}'
+      };
+    } else {}
+  }
+
   Future editNote(String id) async {
     await FirebaseFirestore.instance
         .collection('users')
@@ -128,7 +159,8 @@ class _EditNotePageState extends State<EditNotePage> {
         .doc(id)
         .set({
           'title': _titleController.text.trim(),
-          'description': _descriptionController.text.trim()
+          'description': _descriptionController.text.trim(),
+          'preview_image': imageData
         })
         .then((value) => {
               ScaffoldMessenger.of(context).showSnackBar(

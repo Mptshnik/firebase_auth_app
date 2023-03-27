@@ -1,5 +1,8 @@
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -15,6 +18,7 @@ class _RegisterPageState extends State<RegisterPage> {
   TextEditingController _lastNameController = TextEditingController();
   TextEditingController _firstNameController = TextEditingController();
   TextEditingController _middleNameController = TextEditingController();
+  late Map<String, dynamic> imageData = {};
 
   late FirebaseAuth _auth;
   bool isObscure = true;
@@ -25,7 +29,7 @@ class _RegisterPageState extends State<RegisterPage> {
     _auth = FirebaseAuth.instance;
 
     return Scaffold(
-      body: SafeArea(
+      body: SingleChildScrollView(
           child: Padding(
         padding: EdgeInsets.all(30),
         child: Form(
@@ -113,7 +117,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
               ),
-              
+
               //first name
               Padding(
                 padding: EdgeInsets.only(left: 100, right: 100, top: 15),
@@ -138,7 +142,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
               ),
-               //middle name
+              //middle name
               Padding(
                 padding: EdgeInsets.only(left: 100, right: 100, top: 15),
                 child: TextFormField(
@@ -162,6 +166,15 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
               ),
+              Padding(
+                  padding: EdgeInsets.only(left: 350, right: 350, top: 50),
+                  child: Container(
+                    width: 50,
+                    child: ElevatedButton(
+                      child: Text("Загрузить фото профиля"),
+                      onPressed: () => {_pickFile()},
+                    ),
+                  )),
               Padding(
                   padding: EdgeInsets.only(left: 350, right: 350, top: 50),
                   child: Container(
@@ -193,13 +206,13 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Future addUserDetails(String id) async
-  {
+  Future addUserDetails(String id) async {
     await FirebaseFirestore.instance.collection('users').doc(id).set({
       'first_name': _lastNameController.text.trim(),
       'last_name': _lastNameController.text.trim(),
       'middle_name': _middleNameController.text.trim(),
-      'email': _loginController.text.trim()
+      'email': _loginController.text.trim(),
+      'profile_image': imageData
     });
   }
 
@@ -226,6 +239,25 @@ class _RegisterPageState extends State<RegisterPage> {
       }
     } catch (e) {
       print(e);
+    }
+  }
+
+  void _pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+    if (result != null) {
+      PlatformFile file = result.files.first;
+      await FirebaseStorage.instance
+          .ref('uploads/${file.name}')
+          .putData(file.bytes!);
+
+      imageData = {
+        "size": file.size,
+        "file_extensions": file.extension!,
+        "name": file.name,
+        'storage_path': 'uploads/${file.name}'
+      };
+    } else {
     }
   }
 }
